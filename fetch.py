@@ -13,7 +13,7 @@ def fetch_historical(symbol, date_start, date_end):
   #symbol = 'GOOG'
   #data = ystockquote.get_historical_prices(symbol, '2015-12-31', '2016-01-23')
 
-  print symbol
+  print(symbol)
   start = time.clock()
   data = ystockquote.get_historical_prices(symbol, date_start, date_end)
   elapsed = time.clock()

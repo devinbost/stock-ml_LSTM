@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import os
+import os.path
 import time
 import csv
 import math
@@ -26,6 +26,11 @@ epochs = 30
 
 Symbols = []
 
+
+capitalData = np.loadtxt("capitalData.csv")
+positionData = np.loadtxt("positionData.csv")
+
+"""
 def normalize(data):
   mean = np.mean(data, axis=0)
   std = np.std(data, axis=0)
@@ -48,7 +53,7 @@ def gen_data(data, m):
     if (data[(i + m), 3] > data[(i + m - 1), 3]):
         y_dir[i] = 1
   return x, y, y_dir
-
+"""
 print('Generating Data...')
 data = np.genfromtxt('GOOGL_train20040101-20141231.csv', delimiter=',')[:, 1:]
 data_test = np.genfromtxt('GOOGL_test20150101-20151231.csv', delimiter=',')[:, 1:]
@@ -56,7 +61,7 @@ data_test_orig = data_test
 
 data = data[1:] / data[:-1] - 1
 data_test = data_test[1:] / data_test[:-1] - 1
-
+"""
 print('Building Model...')
 model = Sequential() # Edit the NN architecture here
 model.add(LSTM(50, return_sequences=True, activation='tanh', input_shape=(None, 5)))
@@ -114,14 +119,37 @@ def PnL(predicted, actual):
 
 capital, position = PnL(output[0, :, 3], data_test[0, 1:, 3])
 
+# We need to save this data to a file!!!
+def WriteToFiles(data, fileName):
+    np.savetxt(fileName, data, delimiter="++|++")
+
+WriteToFiles(capital, "capitalData.csv")
+WriteToFiles(position, "positionData.csv")
+"""
+
+
+
 #length = data_test.shape[1] - 1
 length = 100
 
 plt.figure(1)
-plt.plot(capital[:length])
-plt.figure(2)
-ax1 = plt.subplot(211)
+plt.subplot(211)
+plt.plot(capitalData[:length])
+#plt.figure(2)
+plt.subplot(212)
 plt.plot(data_test_orig[:length + 1, 3])
-plt.subplot(212, sharex = ax1)
-plt.scatter(np.arange(length + 1), position[:length + 1])
-plt.show(block = False)
+
+#plt.scatter(np.arange(length + 1), positionData[:length + 1])
+plt.show()
+
+def CreatePlot(capital, position):
+    plt.figure(1)
+    plt.plot(capital[:length])
+    plt.figure(2)
+    ax1 = plt.subplot(211)
+    plt.plot(data_test_orig[:length + 1, 3])
+    plt.subplot(212, sharex=ax1)
+    plt.scatter(np.arange(length + 1), position[:length + 1])
+    plt.show(block=False)
+
+#CreatePlot(capitalData, positionData)
