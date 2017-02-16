@@ -11,7 +11,8 @@ import theano.tensor as T
 
 from keras.models import Sequential
 from keras import optimizers
-from keras.layers.core import TimeDistributedDense, Dropout, Activation, Reshape, Flatten
+from keras.layers.wrappers import TimeDistributed
+from keras.layers.core import Dense, Dropout, Activation, Reshape, Flatten
 from keras.layers.recurrent import LSTM, SimpleRNN, GRU
 import matplotlib.pyplot as plt
 from matplotlib.finance import candlestick2_ohlc
@@ -48,7 +49,7 @@ def gen_data(data, m):
         y_dir[i] = 1
   return x, y, y_dir
 
-print 'Generating Data...'
+print('Generating Data...')
 data = np.genfromtxt('GOOGL_train20040101-20141231.csv', delimiter=',')[:, 1:]
 data_test = np.genfromtxt('GOOGL_test20150101-20151231.csv', delimiter=',')[:, 1:]
 data_test_orig = data_test
@@ -56,20 +57,20 @@ data_test_orig = data_test
 data = data[1:] / data[:-1] - 1
 data_test = data_test[1:] / data_test[:-1] - 1
 
-print 'Building Model...'
+print('Building Model...')
 model = Sequential() # Edit the NN architecture here
 model.add(LSTM(50, return_sequences=True, activation='tanh', input_shape=(None, 5)))
 #model.add(LSTM(500, return_sequences=True, activation='tanh'))
 #model.add(LSTM(500, return_sequences=True, activation='tanh'))
-model.add(TimeDistributedDense(4, activation='linear'))
+model.add(TimeDistributed(Dense(4, activation='linear')))
 
-print 'Compiling...'
+print('Compiling...')
 model.compile(loss="mean_squared_error", optimizer='adam')
 
 #if os.path.isfile('keras-weights.nn'):
   #print 'Loading Model...'
   #model.load_weights('keras-weights.nn')
-print 'Begin Training...'
+print('Begin Training...')
 #for i in xrange(1, days):
   #print 'Pretraining: Length: ', 2**i
   #x, y, y_dir = gen_data(data, 2**i)
@@ -78,19 +79,19 @@ print 'Begin Training...'
 data_test = np.reshape(data_test, (1, ) + data_test.shape)
 x,y, y_dir = gen_data(data, 256)
 
-print 'Testing Model...'
+print('Testing Model...')
 score = model.evaluate(data_test[:, :-1, :], data_test[:, 1:, :4], batch_size=batch_size, verbose=1)
-print 'Test Score: ', np.sqrt(score)
+print('Test Score: ', np.sqrt(score))
 
 model.fit(x, y, batch_size=batch_size, nb_epoch=epochs, shuffle=False, validation_data=(data_test[:, :-1, :], data_test[:, 1:, :4]))
-print 'Saving Model...'
+print('Saving Model...')
 model.save_weights('keras-weights.nn', overwrite=True)
 
-print 'Testing Model...'
+print('Testing Model...')
 score = model.evaluate(data_test[:, :-1, :], data_test[:, 1:, :4], batch_size=batch_size, verbose=1)
-print 'Test Score: ', np.sqrt(score)
+print('Test Score: ', np.sqrt(score))
 
-print 'All Done :D'
+print('All Done :D')
 
 ### New stuff for Shell Trading
 
@@ -100,7 +101,7 @@ def PnL(predicted, actual):
     assert predicted.shape[0] == actual.shape[0], 'Predicted and actual must be same length'
     capital = [1] # Suppose we invest according to the model and start with 1 pound
     position = [False] # Are we invested in it or not?
-    for i in xrange(predicted.shape[0]):
+    for i in range(predicted.shape[0]):
         if predicted[i] > 0:
             position += [True]
         else:
