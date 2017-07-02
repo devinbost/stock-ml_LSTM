@@ -99,8 +99,30 @@ print('Test Score: ', np.sqrt(score))
 print('All Done :D')
 
 ### New stuff for Shell Trading
-
 output = model.predict(data_test[:, :-1, :])
+
+def forecast_lstm(model, X, n_batch):
+    # reshape input pattern to [samples, timesteps, features]
+    #X = X.reshape(1, 1, len(X))
+    # make forecast
+    print(X)
+    forecast = model.predict(X, batch_size=n_batch)
+    # convert to array
+    print(forecast)
+    return [x for x in forecast[0, 0, :]]
+
+def make_forecasts(model, data_test):
+    n_batch = 1
+    n_lag = 1
+    forecasts = list()
+    for i in range(len(data_test[0, :, :]) - 2):
+        X, y = data_test[:, i:i+2, :], data_test[:, i + n_lag:i + n_lag + 2,:] # i.e. from one to the next
+        # make forecast
+        forecast = forecast_lstm(model, X, n_batch)
+        forecasts.append(forecast)
+    return forecasts
+# data_test[0,0:2,:]  is the first two days with all features
+make_forecasts(model, data_test)
 
 def PnL(predicted, actual):
     assert predicted.shape[0] == actual.shape[0], 'Predicted and actual must be same length'
