@@ -30,7 +30,7 @@ Symbols = []
 capitalData = np.loadtxt("capitalData.csv")
 positionData = np.loadtxt("positionData.csv")
 
-"""
+
 def normalize(data):
   mean = np.mean(data, axis=0)
   std = np.std(data, axis=0)
@@ -53,15 +53,15 @@ def gen_data(data, m):
     if (data[(i + m), 3] > data[(i + m - 1), 3]):
         y_dir[i] = 1
   return x, y, y_dir
-"""
+
 print('Generating Data...')
 data = np.genfromtxt('GOOGL_train20040101-20141231.csv', delimiter=',')[:, 1:]
 data_test = np.genfromtxt('GOOGL_test20150101-20151231.csv', delimiter=',')[:, 1:]
 data_test_orig = data_test
 
-data = data[1:] / data[:-1] - 1
+data = data[1:] / data[:-1] - 1 # This line converts the data into percentage change from previous day. Why not measure log change instead?
 data_test = data_test[1:] / data_test[:-1] - 1
-"""
+
 print('Building Model...')
 model = Sequential() # Edit the NN architecture here
 model.add(LSTM(50, return_sequences=True, activation='tanh', input_shape=(None, 5)))
@@ -125,7 +125,6 @@ def WriteToFiles(data, fileName):
 
 WriteToFiles(capital, "capitalData.csv")
 WriteToFiles(position, "positionData.csv")
-"""
 
 
 
