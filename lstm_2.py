@@ -37,12 +37,12 @@ def calculateLogChangeFromTodayToTomorrow(data):
     notShiftedButWithoutLastDay = dataWithoutDates[:-1]
     shiftedADayAhead = dataWithoutDates[1:]
     logChangeWithoutDates = np.log(shiftedADayAhead / notShiftedButWithoutLastDay)
-    dates = data[:,0]
-    datesShiftedADayAhead = dates[1:] # i.e. dates Reflecting Change From Previous Day
+    #dates = data[:,0]
+    #datesShiftedADayAhead = dates[1:] # i.e. dates Reflecting Change From Previous Day
     # We next need to make the dates (which is a 1-d array) into  a 2-d array with a single column to allow us to join it to the other one
-    datesShiftedADayAheadIn2D = datesShiftedADayAhead.reshape(len(datesShiftedADayAhead), 1)
-    datesAndLogChangesFromPreviousDay = np.hstack([datesShiftedADayAheadIn2D, logChangeWithoutDates])
-    return datesAndLogChangesFromPreviousDay
+    #datesShiftedADayAheadIn2D = datesShiftedADayAhead.reshape(len(datesShiftedADayAhead), 1)
+    #datesAndLogChangesFromPreviousDay = np.hstack([datesShiftedADayAheadIn2D, logChangeWithoutDates])
+    return logChangeWithoutDates
 
 def normalize(data):
     mean = np.mean(data, axis=0)
@@ -53,12 +53,12 @@ def normalize(data):
 
 def createSequences(data, seqLength):
   numDataRows = data.shape[0] - seqLength # number of rows minus the sequence length to prevent outofbounds exception
-  x = np.zeros((numDataRows, seqLength, 6)) # for date, high, low, open, close, volume
+  x = np.zeros((numDataRows, seqLength, 5)) # for high, low, open, close, volume
   y = np.zeros((numDataRows, seqLength, 4)) # for high, low, open, close
   y_didCloseHigher = np.zeros(numDataRows)
   for i in range(numDataRows):
     x[i] = data[i:(i + seqLength)]
-    y[i] = data[(i + 1):(i + seqLength + 1), 1:5] # includes high, low, open, close prices (i.e. indexes 1,2,3,4)
+    y[i] = data[(i + 1):(i + seqLength + 1), :4] # includes high, low, open, close prices (i.e. indexes 1,2,3,4)
     if (data[(i + seqLength), 4] > data[(i + seqLength - 1), 4]): # i.e. If the closing price of today is greater than yesterday's closing price
         y_didCloseHigher[i] = 1
   return x, y, y_didCloseHigher
@@ -97,7 +97,7 @@ data_testWithLogChangesNormalized, data_testMean, data_testStd = normalize(data_
 
 print('Building Model...')
 model = Sequential()
-model.add(LSTM(500, return_sequences=True, activation='tanh', input_shape=(None, 6)))
+model.add(LSTM(500, return_sequences=True, activation='tanh', input_shape=(None, 5)))
 model.add(TimeDistributed(Dense(4, activation='linear')))
 
 print('Compiling...')
@@ -107,22 +107,23 @@ model.compile(loss="mean_squared_error", optimizer='adam')
 data_testWithLogChangesNormalizedReshaped = np.reshape(data_testWithLogChangesNormalized, (1, ) + data_testWithLogChangesNormalized.shape)
 
 print('Testing Model...')
-score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, 1:5], batch_size=batch_size, verbose=1)
+score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :4], batch_size=batch_size, verbose=1)
 print('Test Score: ', np.sqrt(score))
 
 x, y, y_didCloseHigher = createSequences(dataWithLogChangesNormalized, 256)
-model.fit(x, y, batch_size=batch_size, nb_epoch=epochs, shuffle=False, validation_data=(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, 1:5]))
+model.fit(x, y, batch_size=batch_size, nb_epoch=epochs, shuffle=False, validation_data=(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :4]))
 print('Saving Model...')
-model.save_weights('keras-weights-2000batchSize.nn', overwrite=True)
+model.save_weights('keras-weights-2000batchSize_noDates.nn', overwrite=True)
 
 print('Testing Model...')
-score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, 1:5], batch_size=batch_size, verbose=1)
+score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :4], batch_size=batch_size, verbose=1)
 print('Test Score: ', np.sqrt(score))
 
 output = model.predict(data_testWithLogChangesNormalizedReshaped[:, :-1, :])
-unNormalizedOutput = unNormalize(output, data_testMean, data_testStd)
-
-capital, position = PnL(output[0, :, 4], data_test[0, 1:, 4])
+unNormalizedOutput = unNormalize(output, data_testMean[:-1], data_testStd[:-1])
+# After unNormalizing the output, we need to undo the fact that we're dealing with just log changes!
+# So, we need to calculate PnL in consideration of that!
+capital, position = PnL(output[0, :, 3], data_test[1:-1, 3])
 
 length = 100
 
