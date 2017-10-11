@@ -132,6 +132,7 @@ def PnL(predicted, actual):
         if predicted[i] > 0:
             position += [True]
         else:
+
             position += [False]
         if position[-1] == True:
             capital += [capital[-1] * (actual[i] + 1)]

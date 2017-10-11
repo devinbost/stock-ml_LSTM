@@ -23,12 +23,13 @@ import numpy as np
 
 
 
-n = 2 # was 5
-batch_size = 20
-days = 8
+n = 5 # was 5
+batch_size = 200
+days = 30
 grad_clip = 100
 random.seed(0)
-epochs = 2 # was 30
+epochs = 11000 # was 30
+numberOfColumns = 5
 
 Symbols = []
 
@@ -53,12 +54,12 @@ def normalize(data):
 
 def createSequences(data, seqLength):
   numDataRows = data.shape[0] - seqLength # number of rows minus the sequence length to prevent outofbounds exception
-  x = np.zeros((numDataRows, seqLength, 5)) # for high, low, open, close, volume
-  y = np.zeros((numDataRows, seqLength, 4)) # for high, low, open, close
+  x = np.zeros((numDataRows, seqLength, numberOfColumns)) # for high, low, open, close, volume
+  y = np.zeros((numDataRows, seqLength, numberOfColumns)) # for high, low, open, close, volume
   y_didCloseHigher = np.zeros(numDataRows)
   for i in range(numDataRows):
     x[i] = data[i:(i + seqLength)]
-    y[i] = data[(i + 1):(i + seqLength + 1), :4] # includes high, low, open, close prices (i.e. indexes 1,2,3,4)
+    y[i] = data[(i + 1):(i + seqLength + 1), :numberOfColumns] # includes high, low, open, close prices and volume (i.e. indexes 1,2,3,4,5)
     if (data[(i + seqLength), 4] > data[(i + seqLength - 1), 4]): # i.e. If the closing price of today is greater than yesterday's closing price
         y_didCloseHigher[i] = 1
   return x, y, y_didCloseHigher
@@ -97,8 +98,8 @@ data_testWithLogChangesNormalized, data_testMean, data_testStd = normalize(data_
 
 print('Building Model...')
 model = Sequential()
-model.add(LSTM(500, return_sequences=True, activation='tanh', input_shape=(None, 5)))
-model.add(TimeDistributed(Dense(4, activation='linear')))
+model.add(LSTM(500, return_sequences=True, activation='tanh', input_shape=(None, numberOfColumns)))
+model.add(TimeDistributed(Dense(numberOfColumns, activation='linear')))
 
 print('Compiling...')
 model.compile(loss="mean_squared_error", optimizer='adam')
@@ -107,16 +108,17 @@ model.compile(loss="mean_squared_error", optimizer='adam')
 data_testWithLogChangesNormalizedReshaped = np.reshape(data_testWithLogChangesNormalized, (1, ) + data_testWithLogChangesNormalized.shape)
 
 print('Testing Model...')
-score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :4], batch_size=batch_size, verbose=1)
+score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :numberOfColumns], batch_size=batch_size, verbose=1)
 print('Test Score: ', np.sqrt(score))
 
 x, y, y_didCloseHigher = createSequences(dataWithLogChangesNormalized, 256)
-model.fit(x, y, batch_size=batch_size, nb_epoch=epochs, shuffle=False, validation_data=(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :4]))
+# model.load_weights(filepath, by_name=False)
+model.fit(x, y, batch_size=batch_size, nb_epoch=epochs, shuffle=False, validation_data=(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :numberOfColumns]))
 print('Saving Model...')
-model.save_weights('keras-weights-2000batchSize_noDates.nn', overwrite=True)
+model.save_weights('keras-weights-200batchSize_allColumns_11000epochs.nn', overwrite=True)
 
 print('Testing Model...')
-score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :4], batch_size=batch_size, verbose=1)
+score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :numberOfColumns], batch_size=batch_size, verbose=1)
 print('Test Score: ', np.sqrt(score))
 
 output = model.predict(data_testWithLogChangesNormalizedReshaped[:, :-1, :])
