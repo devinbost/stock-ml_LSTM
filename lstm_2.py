@@ -25,10 +25,10 @@ import numpy as np
 
 n = 5 # was 5
 batch_size = 200
-days = 30
+days = 8
 grad_clip = 100
 random.seed(0)
-epochs = 11000 # was 30
+epochs = 10000 # was 30
 numberOfColumns = 5
 
 Symbols = []
@@ -104,7 +104,12 @@ model.add(TimeDistributed(Dense(numberOfColumns, activation='linear')))
 print('Compiling...')
 model.compile(loss="mean_squared_error", optimizer='adam')
 
+for i in range(1, days):
+  print('Pretraining: Length: ', 2**i)
+  x, y, y_dir = createSequences(dataWithLogChangesNormalized, 2**i)
+  model.fit(x, y, batch_size=batch_size, nb_epoch=1, shuffle=False)
 # We need to now reshape the 2d matrix into a 3d tensor with a single matrix.
+dataWithLogChangesNormalizedReshaped = np.reshape(dataWithLogChangesNormalized, (1, ) + dataWithLogChangesNormalized.shape)
 data_testWithLogChangesNormalizedReshaped = np.reshape(data_testWithLogChangesNormalized, (1, ) + data_testWithLogChangesNormalized.shape)
 
 print('Testing Model...')
@@ -113,16 +118,17 @@ print('Test Score: ', np.sqrt(score))
 
 x, y, y_didCloseHigher = createSequences(dataWithLogChangesNormalized, 256)
 # model.load_weights(filepath, by_name=False)
-model.fit(x, y, batch_size=batch_size, nb_epoch=epochs, shuffle=False, validation_data=(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :numberOfColumns]))
+print('Start actual training...')
+model.fit(x, y, batch_size=batch_size, nb_epoch=epochs, shuffle=False, validation_data=(dataWithLogChangesNormalizedReshaped[:, :-1, :], dataWithLogChangesNormalizedReshaped[:, 1:, :numberOfColumns]))
 print('Saving Model...')
-model.save_weights('keras-weights-200batchSize_allColumns_11000epochs.nn', overwrite=True)
+model.save_weights('keras-weights-200batchSize_allColumns_10000epochs.nn', overwrite=True)
 
 print('Testing Model...')
 score = model.evaluate(data_testWithLogChangesNormalizedReshaped[:, :-1, :], data_testWithLogChangesNormalizedReshaped[:, 1:, :numberOfColumns], batch_size=batch_size, verbose=1)
 print('Test Score: ', np.sqrt(score))
 
 output = model.predict(data_testWithLogChangesNormalizedReshaped[:, :-1, :])
-unNormalizedOutput = unNormalize(output, data_testMean[:-1], data_testStd[:-1])
+unNormalizedOutput = unNormalize(output, data_testMean, data_testStd)
 # After unNormalizing the output, we need to undo the fact that we're dealing with just log changes!
 # So, we need to calculate PnL in consideration of that!
 capital, position = PnL(output[0, :, 3], data_test[1:-1, 3])
